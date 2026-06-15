@@ -1,6 +1,6 @@
 # Not-Access
 
-# NOT ACCESS — Advanced Secure Vault
+# NOT ACCESS - Advanced Secure Vault
 
 NOT ACCESS is a decentralized, offline Progressive Web Application (PWA) built to keep your sensitive credentials and secure notes protected. Operating with a zero-server architecture, all data stays strictly within your browser's local sandbox (IndexedDB), ensuring complete offline privacy.
 
@@ -24,4 +24,4 @@ NOT ACCESS is a decentralized, offline Progressive Web Application (PWA) built t
 This application is designed, tested, and optimized primarily for **Brave Browser** to maintain the highest standard of security, feature integrity, and platform stability.
 
 
-# NOT ACCESS — Advanced Secure Vault (v3.0)
+# NOT ACCESS - Advanced Secure Vault (v3.0)
