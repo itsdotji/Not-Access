@@ -27,7 +27,7 @@ This application is designed, tested, and optimized primarily for **Brave Browse
 
 **Contributions, feature requests, and bug reports are welcome.**
 
-**If you'd like to improve CLIPO, feel free to fork the repository and submit a pull request.**
+**If you'd like to improve NOT ACCESS, feel free to fork the repository and submit a pull request.**
 
 ## 📄 License
 
