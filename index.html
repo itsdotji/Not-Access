@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NOT ACCESS | Advanced Secure Vault</title>
+    <link id="dynamic-manifest" rel="manifest">
+    <style>
+        /* =========================================
+           CSS VARIABLES & GLOBAL RESET
+           ========================================= */
+        :root {
+            --bg-color: #080808;
+            --surface-color: #121212;
+            --surface-hover: #1e1e1e;
+            --text-color: #e0e0e0;
+            --text-muted: #888888;
+            --accent-color: #ffffff;
+            --border-color: #2a2a2a;
+            --danger: #ff4444;
+            --success: #00cc66;
+            --warning: #ffaa00;
+            --info: #33b5e5;
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-mono); }
+        body { background-color: #000; color: var(--text-color); display: flex; justify-content: center; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+        
+        /* Mobile-First Constraints */
+        #app-container { width: 100%; max-width: 500px; min-height: 100vh; background-color: var(--bg-color); position: relative; display: flex; flex-direction: column; overflow-x: hidden;}
+        
+        /* Typography */
+        h1, h2, h3 { color: var(--accent-color); font-weight: normal; margin-bottom: 15px; letter-spacing: -0.5px; }
+        p { line-height: 1.5; margin-bottom: 15px; font-size: 0.9rem; color: var(--text-muted); }
+        strong { color: var(--text-color); }
+        
+        /* Header & Nav */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-color); z-index: 100; position: sticky; top: 0; }
+        .logo { font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; color: var(--accent-color); }
+        .menu-btn { cursor: pointer; font-size: 1.5rem; background: none; border: none; color: var(--accent-color); padding: 5px; }
+        
+        /* Sidebar Menu (Preserved Links) */
+        #sidebar { position: fixed; top: 0; right: -100%; width: 280px; height: 100vh; background: var(--surface-color); border-left: 1px solid var(--border-color); transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; padding: 60px 20px 20px; overflow-y: auto; }
+        #sidebar.active { right: 0; }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 2rem; cursor: pointer; background: none; border: none; color: var(--accent-color); }
+        .nav-link { display: block; color: var(--text-color); text-decoration: none; padding: 14px 0; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; transition: color 0.2s; }
+        .nav-link:hover { color: var(--accent-color); }
+        
+        /* Banners & Toasts */
+        #warning-banner { background-color: rgba(255, 170, 0, 0.1); border-left: 4px solid var(--warning); padding: 12px; margin: 15px; font-size: 0.8rem; line-height: 1.4; color: var(--warning); }
+        #toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; width: 90%; max-width: 400px; pointer-events: none; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: var(--accent-color); color: var(--bg-color); padding: 12px 20px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; text-align: center; opacity: 0; transform: translateY(20px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        .toast.show { opacity: 1; transform: translateY(0); }
+
+        /* Routing */
+        main { flex: 1; padding: 20px; overflow-y: auto; overflow-x: hidden; }
+        .page, .view-section { display: none; animation: fadeIn 0.3s ease; }
+        .page.active, .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Forms, Inputs & Buttons */
+        .input-group { margin-bottom: 18px; position: relative; }
+        label { display: block; margin-bottom: 8px; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        input[type="text"], input[type="password"], input[type="number"], select, textarea { width: 100%; padding: 14px; background: var(--surface-color); border: 1px solid var(--border-color); color: var(--accent-color); outline: none; border-radius: 4px; transition: border-color 0.2s; font-size: 1rem; }
+        input:focus, textarea:focus, select:focus { border-color: var(--accent-color); }
+        textarea { resize: vertical; min-height: 100px; }
+        
+        .btn { width: 100%; padding: 14px; background: var(--accent-color); color: var(--bg-color); border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.2s, transform 0.1s; font-size: 0.95rem; }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { background: var(--surface-color); color: var(--accent-color); border: 1px solid var(--border-color); }
+        .btn-danger { background: rgba(255, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
+        
+        /* Layout Utilities */
+        .hidden { display: none !important; }
+        .flex-row { display: flex; gap: 10px; align-items: center; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .flex-wrap { flex-wrap: wrap; }
+        
+        /* Vault Dashboard */
+        .dash-header { border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .stat-box { background: var(--surface-color); border: 1px solid var(--border-color); padding: 15px; border-radius: 4px; text-align: center; }
+        .stat-box strong { display: block; font-size: 1.5rem; color: var(--accent-color); margin-bottom: 5px; }
+        .stat-box span { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
+        
+        /* Vault Items */
+        .search-bar { margin-bottom: 20px; position: relative; }
+        .pass-card { background: var(--surface-color); border: 1px solid var(--border-color); padding: 15px; margin-bottom: 10px; border-radius: 4px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+        .pass-card:hover { border-color: var(--text-muted); background: var(--surface-hover); }
+        .pass-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .identifier { font-weight: bold; color: var(--accent-color); font-size: 1.1rem; word-break: break-all; padding-right: 10px; }
+        .tags-container { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+        .tag { background: #2a2a2a; color: #ccc; padding: 3px 8px; font-size: 0.65rem; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .tag.warning { background: rgba(255, 170, 0, 0.2); color: var(--warning); border: 1px solid var(--warning); }
+        
+        /* Password Strength & Generator */
+        .strength-meter { height: 4px; background: var(--border-color); margin-top: 8px; border-radius: 2px; overflow: hidden; }
+        .strength-bar { height: 100%; width: 0%; transition: width 0.3s, background 0.3s; }
+        .gen-options { background: var(--surface-color); padding: 15px; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 15px; }
+        .checkbox-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; }
+        
+        /* Security Dashboard & Audit */
+        .health-score { font-size: 3rem; text-align: center; margin: 20px 0; color: var(--success); font-weight: bold; }
+        .audit-log { max-height: 300px; overflow-y: auto; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; }
+        .audit-item { padding: 10px; border-bottom: 1px solid var(--border-color); font-size: 0.8rem; }
+        .audit-item:last-child { border-bottom: none; }
+        .audit-time { color: var(--info); display: block; margin-bottom: 4px; font-size: 0.7rem; }
+        
+        /* Utilities */
+        .mono-bg { background: #111; padding: 15px; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 15px; word-break: break-all; }
+        hr { border: 0; border-top: 1px dashed var(--border-color); margin: 20px 0; }
+        
+        /* Social Links & Icons */
+        .social-links { display: flex; gap: 15px; align-items: center; margin-top: 10px; }
+        .icon { width: 24px; height: 24px; fill: var(--text-color); vertical-align: middle; transition: fill 0.2s; }
+        .icon:hover { fill: var(--accent-color); }
+        
+        footer { padding: 20px; text-align: center; font-size: 0.7rem; border-top: 1px solid var(--border-color); color: var(--text-muted); }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <header>
+        <div class="logo">NOT ACCESS</div>
+        <button class="menu-btn" onclick="UI.toggleMenu()" aria-label="Menu" aria-expanded="false">≡</button>
+    </header>
+
+    <nav id="sidebar" aria-label="Main Navigation">
+        <button class="close-btn" onclick="UI.toggleMenu()" aria-label="Close Menu">×</button>
+        <a href="#home" class="nav-link" onclick="UI.toggleMenu()">Home / Dashboard</a>
+        <a href="#about-us" class="nav-link" onclick="UI.toggleMenu()">About Us</a>
+        <a href="#about-company" class="nav-link" onclick="UI.toggleMenu()">About Company</a>
+        <a href="#contact" class="nav-link" onclick="UI.toggleMenu()">Contact</a>
+        <a href="#terms" class="nav-link" onclick="UI.toggleMenu()">Terms & Conditions</a>
+        <a href="#privacy" class="nav-link" onclick="UI.toggleMenu()">Privacy Policy</a>
+        <a href="#content-policy" class="nav-link" onclick="UI.toggleMenu()">Content Policy</a>
+        <a href="#warning-page" class="nav-link" onclick="UI.toggleMenu()">Warning</a>
+        <a href="#licence" class="nav-link" onclick="UI.toggleMenu()">Licence (MIT)</a>
+        <a href="#open-source" class="nav-link" onclick="UI.toggleMenu()">Open Source</a>
+        <a href="#hacker-trap" class="nav-link" onclick="UI.toggleMenu()">Recovery Finder (Trap)</a>
+    </nav>
+
+    <div id="warning-banner" class="hidden">
+        <strong>SECURITY NOTICE:</strong> <span id="lock-status">App state monitoring active.</span>
+        <button class="btn" id="install-button" style="display: none; padding: 8px; margin-top:10px;">Install PWA</button>
+    </div>
+
+    <main id="router-view">
+        <div id="home" class="page active">
+            
+            <div id="view-setup" class="view-section">
+                <h2>Vault Initialization</h2>
+                <p>Create a strong Master Password. This offline instance utilizes AES-256-GCM encryption. There is no password reset.</p>
+                <div class="input-group">
+                    <label>Master Password</label>
+                    <input type="password" id="setup-pass" autocomplete="new-password" spellcheck="false">
+                    <div class="flex-between text-muted" style="font-size:0.7rem; margin-top:5px;">
+                        <span id="setup-entropy-label">Entropy: 0 bits</span>
+                        <span id="setup-crack-label">Crack time: Instant</span>
+                    </div>
+                    <div class="strength-meter"><div id="setup-strength" class="strength-bar"></div></div>
+                </div>
+                <div class="input-group">
+                    <label>Confirm Master Password</label>
+                    <input type="password" id="setup-pass-confirm" autocomplete="new-password" spellcheck="false">
+                </div>
+                <button class="btn" id="btn-init-vault" onclick="AuthApp.setupVault()">Initialize Secure Vault</button>
+            </div>
+
+            <div id="view-recovery-gen" class="view-section">
+                <h2>Emergency Recovery Key</h2>
+                <p>This 32-character key is cryptographically bound to your vault. If you lose your Master Password, this is the <strong>only</strong> way to decrypt your data.</p>
+                <div class="mono-bg text-center" style="border-color: var(--danger);">
+                    <code id="display-recovery-key" style="color:var(--danger); font-size:1.2rem; font-weight:bold;"></code>
+                </div>
+                <div class="flex-row">
+                    <button class="btn btn-secondary" onclick="UI.copyText('display-recovery-key')">Copy Key</button>
+                    <button class="btn" onclick="AuthApp.acknowledgeRecovery()">I Have Saved It</button>
+                </div>
+            </div>
+
+            <div id="view-unlock" class="view-section">
+                <h2>Vault Locked</h2>
+                <p id="lockout-msg" class="hidden" style="color:var(--danger); font-weight:bold;"></p>
+                <div class="input-group" id="unlock-input-wrapper">
+                    <label>Master Password</label>
+                    <input type="password" id="unlock-pass" autocomplete="current-password" spellcheck="false">
+                </div>
+                <button class="btn" id="btn-unlock" onclick="AuthApp.unlockVault()">Decrypt & Unlock</button>
+
+                <hr>
+                <button class="btn btn-secondary" onclick="UI.showView('view-recover')">Forgot Password? Use Recovery Key</button>
+            </div>
+
+            <div id="view-recover" class="view-section">
+                <h2>Emergency Recovery</h2>
+                <p>Enter your 32-character Recovery Key.</p>
+                <div class="input-group">
+                    <label>Recovery Key</label>
+                    <input type="text" id="recover-key-input" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false">
+                </div>
+                <button class="btn" onclick="AuthApp.recoverVault()">Attempt Decryption</button>
+                <button class="btn btn-secondary" onclick="UI.showView('view-unlock')">Cancel</button>
+            </div>
+
+            <div id="view-dashboard" class="view-section">
+                <div class="dash-header">
+                    <div class="flex-between">
+                        <h2>Anon Environment</h2>
+                        <button class="btn btn-danger" style="width:auto; padding:8px 15px; margin:0;" onclick="AuthApp.lockVault('User requested lock.')">Lock</button>
+                    </div>
+                    <div class="stat-grid">
+                        <div class="stat-box"><strong id="stat-count">0</strong><span>Entries</span></div>
+                        <div class="stat-box"><strong id="stat-health">100%</strong><span style="color:var(--success)">Vault Health</span></div>
+                    </div>
+                </div>
+
+                <div class="flex-between search-bar">
+                    <input type="text" id="search-input" placeholder="Search identifiers or tags..." autocomplete="off" spellcheck="false" onkeyup="UI.filterVault()" style="width:70%;">
+                    <button class="btn" style="width:25%; margin:0;" onclick="UI.prepareEntryForm()">+ Add</button>
+                </div>
+
+                <div id="vault-list" style="min-height: 200px;">
+                    </div>
+                
+                <hr>
+                <h3>Security & Tools</h3>
+                <div class="stat-grid" style="grid-template-columns: 1fr;">
+                    <button class="btn btn-secondary" onclick="UI.showSecurityDashboard()">Security Dashboard & Logs</button>
+                    <button class="btn btn-secondary" onclick="UI.showSettings()">Vault Settings & Backup</button>
+                </div>
+            </div>
+
+            <div id="view-entry-form" class="view-section">
+                <h2 id="entry-form-title">Add Entry</h2>
+                <input type="hidden" id="entry-edit-id">
+                
+                <div class="input-group">
+                    <label>Title / Identifier *</label>
+                    <input type="text" id="entry-title" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="input-group">
+                    <label>Username / Email</label>
+                    <input type="text" id="entry-user" autocomplete="off" spellcheck="false">
+                </div>
+                
+                <div class="input-group">
+                    <div class="flex-between">
+                        <label>Password *</label>
+                        <span id="entry-pass-entropy" style="font-size:0.7rem; color:var(--info);"></span>
+                    </div>
+                    <input type="password" id="entry-pass" autocomplete="new-password" spellcheck="false">
+                    <div class="flex-row" style="margin-top:10px;">
+                        <button class="btn btn-secondary" style="margin:0;" onclick="UI.toggleVisibility('entry-pass')">👁 Show</button>
+                        <button class="btn btn-secondary" style="margin:0; border-color:var(--info); color:var(--info);" onclick="UI.showView('view-generator')">⚙ Generate</button>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Category Tags (Comma separated)</label>
+                    <input type="text" id="entry-tags" placeholder="Web, Work, Finance..." autocomplete="off" spellcheck="false">
+                </div>
+                <div class="input-group">
+                    <label>Secure Notes</label>
+                    <textarea id="entry-notes" autocomplete="off" spellcheck="false"></textarea>
+                </div>
+                
+                <button class="btn" onclick="VaultApp.saveEntry()">Save Encrypted Entry</button>
+                <div class="flex-row">
+                    <button class="btn btn-secondary" onclick="UI.showView('view-dashboard')">Cancel</button>
+                    <button class="btn btn-danger hidden" id="btn-delete-entry" onclick="VaultApp.deleteEntry()">Delete</button>
+                </div>
+            </div>
+
+            <div id="view-single-entry" class="view-section">
+                <div class="flex-between" style="margin-bottom: 15px;">
+                    <h2 id="view-title" style="margin:0; word-break:break-all;">--</h2>
+                    <div id="view-tags" class="tags-container"></div>
+                </div>
+                
+                <div class="mono-bg">
+                    <label>Username / Email</label>
+                    <div class="flex-between">
+                        <span id="view-user" style="word-break:break-all;"></span>
+                        <button class="btn btn-secondary" style="width:auto; padding:6px 12px; margin:0;" onclick="UI.copySensitive('view-user', false)">Copy</button>
+                    </div>
+                </div>
+                
+                <div class="mono-bg" style="border-color: var(--info);">
+                    <label>Password</label>
+                    <div class="flex-between">
+                        <span id="view-pass-masked" style="letter-spacing: 2px;">••••••••••••</span>
+                        <span id="view-pass-raw" class="hidden" style="word-break:break-all; font-weight:bold;"></span>
+                        <div class="flex-row">
+                            <button class="btn btn-secondary" style="width:auto; padding:6px 12px; margin:0;" onclick="UI.revealPasswordTemporarily()">👁</button>
+                            <button class="btn btn-secondary" style="width:auto; padding:6px 12px; margin:0;" onclick="UI.copySensitive('view-pass-raw', true)">Copy</button>
+                        </div>
+                    </div>
+                    <div id="view-pass-warning" class="hidden text-muted" style="font-size:0.7rem; margin-top:8px;">Visible for <span id="view-pass-timer">15</span>s. Clipboard clears in 30s.</div>
+                </div>
+
+                <div class="mono-bg hidden" id="view-notes-container">
+                    <label>Secure Notes</label>
+                    <p id="view-notes" style="white-space: pre-wrap; font-size:0.85rem; color:#aaa; margin:0;"></p>
+                </div>
+                
+                <p class="text-muted" style="font-size:0.7rem; text-align:right;">Last Modified: <span id="view-modified">--</span></p>
+
+                <hr>
+                <button class="btn" onclick="UI.editCurrentEntry()">Edit Entry</button>
+                <button class="btn btn-secondary" onclick="UI.showView('view-dashboard')">Back to Vault</button>
+            </div>
+
+            <div id="view-generator" class="view-section">
+                <h2>Secure Generator</h2>
+                <div class="mono-bg text-center">
+                    <span id="gen-preview" style="font-size: 1.2rem; word-break: break-all; color:var(--accent-color);"></span>
+                </div>
+                <div class="flex-between text-muted" style="font-size:0.8rem; margin-bottom:15px;">
+                    <span id="gen-entropy">Entropy: --</span>
+                    <span id="gen-crack">Crack: --</span>
+                </div>
+
+                <div class="gen-options">
+                    <label>Length: <span id="gen-len-val">24</span></label>
+                    <input type="range" id="gen-len" min="12" max="64" value="24" style="width:100%; margin-bottom:15px;" oninput="UI.updateGenerator()">
+                    
+                    <div class="checkbox-group">
+                        <span>Uppercase (A-Z)</span>
+                        <input type="checkbox" id="gen-up" checked onchange="UI.updateGenerator()">
+                    </div>
+                    <div class="checkbox-group">
+                        <span>Lowercase (a-z)</span>
+                        <input type="checkbox" id="gen-low" checked onchange="UI.updateGenerator()">
+                    </div>
+                    <div class="checkbox-group">
+                        <span>Numbers (0-9)</span>
+                        <input type="checkbox" id="gen-num" checked onchange="UI.updateGenerator()">
+                    </div>
+                    <div class="checkbox-group">
+                        <span>Symbols (!@#$)</span>
+                        <input type="checkbox" id="gen-sym" checked onchange="UI.updateGenerator()">
+                    </div>
+                </div>
+
+                <div class="flex-row">
+                    <button class="btn btn-secondary" onclick="UI.updateGenerator()">↻ Refresh</button>
+                    <button class="btn" onclick="UI.applyGeneratedPassword()">Use Password</button>
+                </div>
+                <button class="btn btn-secondary" onclick="UI.showView('view-entry-form')" style="margin-top:10px;">Cancel</button>
+            </div>
+
+            <div id="view-security-dash" class="view-section">
+                <h2>Security Dashboard</h2>
+                
+                <div class="mono-bg">
+                    <div class="health-score" id="sec-health-score">--</div>
+                    <p class="text-center">Overall Vault Health</p>
+                    <div class="stat-grid" style="margin-top:15px;">
+                        <div class="stat-box"><strong id="sec-weak">0</strong><span class="text-muted">Weak Passwords</span></div>
+                        <div class="stat-box"><strong id="sec-dupes">0</strong><span class="text-muted">Reused Passwords</span></div>
+                    </div>
+                </div>
+
+                <h3>Audit Log (Encrypted)</h3>
+                <div class="audit-log" id="audit-log-container">
+                    </div>
+
+                <button class="btn btn-secondary" style="margin-top:20px;" onclick="UI.showView('view-dashboard')">Back to Dashboard</button>
+            </div>
+
+            <div id="view-settings" class="view-section">
+                <h2>Settings & Management</h2>
+                
+                <div class="mono-bg">
+                    <h3>Data Backup (HMAC-SHA256)</h3>
+                    <p style="font-size:0.8rem;">Export an encrypted, signed backup. Requires Master Password or Recovery Key to restore.</p>
+                    <div class="flex-row">
+                        <button class="btn" onclick="BackupApp.exportBackup()">Export Vault</button>
+                        <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">Import / Restore</button>
+                        <input type="file" id="import-file" class="hidden" accept=".json" onchange="BackupApp.importBackup(event)">
+                    </div>
+                </div>
+
+                <div class="mono-bg">
+                    <h3>Recovery Management</h3>
+                    <p style="font-size:0.8rem;">Regenerate recovery key. This permanently invalidates the old key.</p>
+                    <button class="btn btn-secondary" onclick="AuthApp.regenerateRecoveryKey()">Regenerate Recovery Key</button>
+                </div>
+
+                <button class="btn btn-secondary" onclick="UI.showView('view-dashboard')">Back to Dashboard</button>
+            </div>
+
+        </div>
+
+        <div id="about-us" class="page">
+            <h2>About Us</h2>
+            <p>NOT ACCESS is a decentralized, strictly client-side Progressive Web Application designed for absolute security. Operating entirely without a backend or server, your data never leaves your device.</p>
+            <p><strong>Officially Tested & Recommended Environment</strong></p><p>This vault is developed, tested, and optimized primarily for <strong>Brave Browser</strong>, which serves as the recommended environment for the most reliable, secure, and consistent experience. While compatibility with other modern browsers may vary, Brave remains the officially recommended browser for full-feature integrity, privacy-focused operation, and optimal platform stability.</p>
+        </div>
+        <div id="about-company" class="page">
+            <h2>About Company</h2>
+            <p><strong>Kimi Technologies</strong> is a forward-thinking tech media company operating under the esteemed parent organization, <strong>Hari International Tech Ventures</strong>. We build privacy-first digital architecture.</p>
+        </div>
+        <div id="contact" class="page">
+            <h2>Contact</h2>
+            <p>Reach out securely:</p>
+            <a href="mailto:connect.kimitech@gmail.com" class="social-links" style="text-decoration:none;">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M20 4H4C2.9 4 2.01 4.9 2.01 6L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                <span style="color:var(--text-color);">connect.kimitech@gmail.com</span>
+            </a>
+        </div>
+        
+        <div id="terms" class="page">
+            <h2>Terms & Conditions</h2>
+            <p>By using NOT ACCESS, you agree that you are solely responsible for your Master Password, Recovery Key, and saved data. The software is provided "as is" with no cloud backup. Loss of device or keys equals permanent data loss.</p>
+        </div>
+        
+        <div id="privacy" class="page">
+            <h2>Privacy Policy</h2>
+            <p><strong>Strict Zero-Data-Collection:</strong>NOT ACCESS collects absolutely no telemetry, logs, analytics, or user data. All operations occur strictly within your browser's local sandbox (localStorage/IndexedDB).</p>
+        </div>
+        
+        <div id="content-policy" class="page">
+            <h2>Content Policy</h2>
+            <p>NOT ACCESS is a neutral tool. Users are responsible for the content (passwords, notes) stored within their local vault. Kimi Technologies holds no liability for user-generated offline data.</p>
+        </div>
+        
+        <div id="warning-page" class="page">
+            <h2>System Warning</h2>
+            <p>This application is designed to be highly secure. Running it via an active internet connection introduces potential browser vulnerabilities. Please utilize the "Add to Home Screen" feature and run airplane mode or disable network connections while managing keys.</p>
+        </div>
+        
+        <div id="licence" class="page">
+            <h2>MIT License</h2>
+            <p>Copyright (c) 2026 NOT ACCESS</p><p style="font-size:0.7rem;">Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction...</p>
+        </div>
+        
+        <div id="open-source" class="page">
+            <h2>Open Source</h2>
+            <p>Contributions are managed strictly via our repositories</p>
+            <div class="social-links">
+                <a href="https://github.com/itsdotji" target="_blank" aria-label="GitHub">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+                    </a>
+                <a href="https://www.linkedin.com/in/nikhil-kumar-31b914341" target="_blank" aria-label="LinkedIn">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                </a>
+            </div>
+        </div>
+        
+        <div id="hacker-trap" class="page">
+            <h2>Recovery Key Finder</h2>
+            <input type="text" id="hack-input" class="input-group" style="width:100%; padding:10px;" placeholder="Payload...">
+            <button class="btn btn-danger" onclick="UI.triggerTrap()">Execute</button>
+            <div id="hacker-screen" class="hidden text-center" style="margin-top:40px;">
+                <h1 style="color:var(--danger); font-size:3rem;">ACCESS DENIED</h1>
+                <p>Intrusion logged locally. Lockout initialized.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        © 2026 NOT ACCESS. Built with ♡ for privacy lovers by open source developers.
+    </footer>
+    
+    <div id="toast-container"></div>
+</div>
+
+<script>
+    /**
+     * NOT ACCESS v3.0 - Professional Client-Side Vault
+     * Architecture: IndexedDB, Web Crypto API, WebAuthn. Zero external libraries.
+     */
+
+    // --- 1. PWA & DYNAMIC MANIFEST ---
+    const manifestJSON = {
+        "name": "NOT ACCESS", "short_name": "NOT ACCESS", "start_url": window.location.href,
+        "display": "standalone", "background_color": "#080808", "theme_color": "#080808",
+        "icons": [{"src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZmZmZiI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00czEuNzktNCA0LTRzLTRg0zQgeiIvPjwvc3ZnPg==", "sizes": "512x512", "type": "image/svg+xml"}]
+    };
+    document.getElementById('dynamic-manifest').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestJSON)));
+
+    const swLogic = `
+        const CACHE = 'not-access-v3';
+        self.addEventListener('install', e => self.skipWaiting());
+        self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+        self.addEventListener('fetch', e => {
+            e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+        });
+    `;
+    if ('serviceWorker' in navigator) {
+        const swBlob = new Blob([swLogic], { type: 'application/javascript' });
+        window.addEventListener('load', () => navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{}));
+    }
+
+    // --- 2. CRYPTO ENGINE (Web Crypto API) ---
+    const Crypto = {
+        str2ab: str => new TextEncoder().encode(str),
+        ab2str: buf => new TextDecoder().decode(buf),
+        ab2base64: buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf))),
+        base642ab: base64 => new Uint8Array(atob(base64).split('').map(c => c.charCodeAt(0))).buffer,
+        generateSalt: () => crypto.getRandomValues(new Uint8Array(16)),
+        generateIV: () => crypto.getRandomValues(new Uint8Array(12)),
+        generateRecoveryStr: () => {
+            const arr = crypto.getRandomValues(new Uint8Array(16));
+            return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('').match(/.{4}/g).join('-');
+        },
+        
+        async deriveKey(passwordStr, saltBuffer) {
+            const keyMaterial = await crypto.subtle.importKey("raw", this.str2ab(passwordStr), {name: "PBKDF2"}, false, ["deriveBits", "deriveKey"]);
+            return crypto.subtle.deriveKey(
+                { name: "PBKDF2", salt: saltBuffer, iterations: 250000, hash: "SHA-256" },
+                keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+            );
+        },
+
+        async generateVaultKey() {
+            return crypto.subtle.generateKey({name: "AES-GCM", length: 256}, true, ["encrypt", "decrypt"]);
+        },
+
+        async wrapKey(vaultKey, wrappingKey) {
+            const iv = this.generateIV();
+            const exportedVaultKey = await crypto.subtle.exportKey("raw", vaultKey);
+            const encrypted = await crypto.subtle.encrypt({name: "AES-GCM", iv: iv}, wrappingKey, exportedVaultKey);
+            return { enc: this.ab2base64(encrypted), iv: this.ab2base64(iv) };
+        },
+
+        async unwrapKey(wrappedObj, unwrappingKey) {
+            const decrypted = await crypto.subtle.decrypt({name: "AES-GCM", iv: this.base642ab(wrappedObj.iv)}, unwrappingKey, this.base642ab(wrappedObj.enc));
+            return crypto.subtle.importKey("raw", decrypted, {name: "AES-GCM", length: 256}, true, ["encrypt", "decrypt"]);
+        },
+
+        async encryptData(dataStr, vaultKey) {
+            const iv = this.generateIV();
+            const encrypted = await crypto.subtle.encrypt({name: "AES-GCM", iv: iv}, vaultKey, this.str2ab(dataStr));
+            return { cipher: this.ab2base64(encrypted), iv: this.ab2base64(iv) };
+        },
+
+        async decryptData(cipherBase64, ivBase64, vaultKey) {
+            const decrypted = await crypto.subtle.decrypt({name: "AES-GCM", iv: this.base642ab(ivBase64)}, vaultKey, this.base642ab(cipherBase64));
+            return this.ab2str(decrypted);
+        },
+
+        async signHMAC(dataStr, vaultKey) {
+            // Export AES key and import as HMAC to generate backup signature
+            const raw = await crypto.subtle.exportKey("raw", vaultKey);
+            const hmacKey = await crypto.subtle.importKey("raw", raw, {name: "HMAC", hash: "SHA-256"}, false, ["sign"]);
+            const signature = await crypto.subtle.sign("HMAC", hmacKey, this.str2ab(dataStr));
+            return this.ab2base64(signature);
+        },
+
+        async verifyHMAC(dataStr, signatureBase64, vaultKey) {
+            const raw = await crypto.subtle.exportKey("raw", vaultKey);
+            const hmacKey = await crypto.subtle.importKey("raw", raw, {name: "HMAC", hash: "SHA-256"}, false, ["verify"]);
+            return crypto.subtle.verify("HMAC", hmacKey, this.base642ab(signatureBase64), this.str2ab(dataStr));
+        }
+    };
+
+    // --- 3. INDEXED-DB ENGINE & MIGRATION ---
+    const DB = {
+        db: null,
+        async init() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open('NotAccessDB', 1);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'id' });
+                    if(!db.objectStoreNames.contains('vault')) db.createObjectStore('vault', { keyPath: 'id' });
+                    if(!db.objectStoreNames.contains('audit')) db.createObjectStore('audit', { keyPath: 'id', autoIncrement: true });
+                };
+                req.onsuccess = async (e) => { 
+                    this.db = e.target.result; 
+                    await this.migrateFromLocalStorage();
+                    resolve(); 
+                };
+                req.onerror = reject;
+            });
+        },
+        async migrateFromLocalStorage() {
+            const oldMeta = localStorage.getItem('NA_META');
+            const oldVault = localStorage.getItem('NA_VAULT');
+            if(oldMeta) {
+                await this.put('meta', { id: 'auth', data: JSON.parse(oldMeta) });
+                localStorage.removeItem('NA_META');
+            }
+            if(oldVault) {
+                await this.put('vault', { id: 'main', data: JSON.parse(oldVault) });
+                localStorage.removeItem('NA_VAULT');
+            }
+        },
+        get(store, id) {
+            return new Promise((resolve, reject) => {
+                const req = this.db.transaction(store, 'readonly').objectStore(store).get(id);
+                req.onsuccess = () => resolve(req.result ? req.result.data : null);
+                req.onerror = reject;
+            });
+        },
+        put(store, dataObj) {
+            return new Promise((resolve, reject) => {
+                const req = this.db.transaction(store, 'readwrite').objectStore(store).put(dataObj);
+                req.onsuccess = () => resolve();
+                req.onerror = reject;
+            });
+        },
+        async addAudit(logStr) {
+            if(!VaultApp.sessionKey) return;
+            const encLog = await Crypto.encryptData(logStr + " | " + new Date().toISOString(), VaultApp.sessionKey);
+            return new Promise((resolve, reject) => {
+                const req = this.db.transaction('audit', 'readwrite').objectStore('audit').add({ data: encLog });
+                req.onsuccess = resolve; req.onerror = reject;
+            });
+        },
+        getAllAudit() {
+            return new Promise((resolve, reject) => {
+                const req = this.db.transaction('audit', 'readonly').objectStore('audit').getAll();
+                req.onsuccess = () => resolve(req.result); req.onerror = reject;
+            });
+        }
+    };
+
+    // --- 4. AUTHENTICATION & BRUTE-FORCE TRACKING ---
+    const AuthApp = {
+        lockoutData: { attempts: 0, lockedUntil: 0 },
+        
+        async checkLockout() {
+            const state = await DB.get('meta', 'lockout');
+            if(state) this.lockoutData = state;
+            
+            if(Date.now() < this.lockoutData.lockedUntil) {
+                const remain = Math.ceil((this.lockoutData.lockedUntil - Date.now())/1000);
+                const msg = `Security Lockout: Try again in ${remain}s`;
+                document.getElementById('lockout-msg').textContent = msg;
+                document.getElementById('lockout-msg').classList.remove('hidden');
+                document.getElementById('btn-unlock').disabled = true;
+                setTimeout(() => this.checkLockout(), 1000);
+                return true;
+            } else {
+                document.getElementById('lockout-msg').classList.add('hidden');
+                document.getElementById('btn-unlock').disabled = false;
+                if(this.lockoutData.lockedUntil > 0 && Date.now() > this.lockoutData.lockedUntil) {
+                    // Reset on success interval passing
+                    this.lockoutData.attempts = 0;
+                    this.lockoutData.lockedUntil = 0;
+                    await DB.put('meta', { id: 'lockout', data: this.lockoutData });
+                }
+                return false;
+            }
+        },
+
+        async recordFailedAttempt() {
+            this.lockoutData.attempts++;
+            if(this.lockoutData.attempts >= 10) {
+                this.lockoutData.lockedUntil = Date.now() + (5 * 60 * 1000); // 5 mins
+            } else if (this.lockoutData.attempts >= 5) {
+                this.lockoutData.lockedUntil = Date.now() + (30 * 1000); // 30 sec
+            }
+            await DB.put('meta', { id: 'lockout', data: this.lockoutData });
+            this.checkLockout();
+        },
+
+        async setupVault() {
+            const pass = document.getElementById('setup-pass').value;
+            const confirm = document.getElementById('setup-pass-confirm').value;
+            if (pass.length < 8) return UI.toast('Password must be at least 8 characters.', 'warning');
+            if (pass !== confirm) return UI.toast('Passwords do not match.', 'danger');
+
+            try {
+                const masterSalt = Crypto.generateSalt();
+                const recoverySalt = Crypto.generateSalt();
+                const recoveryStr = Crypto.generateRecoveryStr();
+                
+                const masterDerived = await Crypto.deriveKey(pass, masterSalt);
+                const recoveryDerived = await Crypto.deriveKey(recoveryStr, recoverySalt);
+
+                // Hash verification marker (derive another key to hash)
+                const markerHash = await Crypto.signHMAC("AUTH_CHECK", masterDerived);
+
+                const vaultKey = await Crypto.generateVaultKey();
+                const wrappedMaster = await Crypto.wrapKey(vaultKey, masterDerived);
+                const wrappedRecovery = await Crypto.wrapKey(vaultKey, recoveryDerived);
+
+                const meta = {
+                    masterSalt: Crypto.ab2base64(masterSalt),
+                    recoverySalt: Crypto.ab2base64(recoverySalt),
+                    authMarker: markerHash,
+                    wrappedMaster: wrappedMaster,
+                    wrappedRecovery: wrappedRecovery,
+                    version: "3.0"
+                };
+                
+                await DB.put('meta', { id: 'auth', data: meta });
+                await DB.put('vault', { id: 'main', data: null }); // Empty vault
+                
+                document.getElementById('setup-pass').value = '';
+                document.getElementById('setup-pass-confirm').value = '';
+                document.getElementById('display-recovery-key').textContent = recoveryStr;
+                UI.showView('view-recovery-gen');
+
+            } catch (err) { console.error(err); UI.toast('Encryption setup failed.', 'danger'); }
+        },
+
+        acknowledgeRecovery() {
+            document.getElementById('display-recovery-key').textContent = 'WIPED FROM MEMORY';
+            UI.showView('view-unlock');
+            UI.toast('Vault secured. Please unlock.', 'success');
+        },
+
+        async unlockVault() {
+            if(await this.checkLockout()) return;
+            
+            const pass = document.getElementById('unlock-pass').value;
+            if (!pass) return;
+
+            try {
+                const meta = await DB.get('meta', 'auth');
+                const masterSalt = Crypto.base642ab(meta.masterSalt);
+                const masterDerived = await Crypto.deriveKey(pass, masterSalt);
+                
+                const attemptHash = await Crypto.signHMAC("AUTH_CHECK", masterDerived);
+                if (attemptHash !== meta.authMarker) {
+                    UI.toast('Incorrect Master Password.', 'danger');
+                    await this.recordFailedAttempt();
+                    return;
+                }
+
+                VaultApp.sessionKey = await Crypto.unwrapKey(meta.wrappedMaster, masterDerived);
+                
+                // Reset Brute force
+                this.lockoutData = { attempts: 0, lockedUntil: 0 };
+                await DB.put('meta', { id: 'lockout', data: this.lockoutData });
+
+                document.getElementById('unlock-pass').value = '';
+                await VaultApp.loadVault();
+                await DB.addAudit("Vault unlocked via Master Password.");
+                
+                UI.showView('view-dashboard');
+                VaultApp.setupAutoLock();
+                UI.toast('Vault decrypted successfully.', 'success');
+            } catch (err) {
+                UI.toast('Decryption error.', 'danger');
+            }
+        },
+
+        async recoverVault() {
+            const recKey = document.getElementById('recover-key-input').value.trim();
+            if (!recKey) return;
+
+            try {
+                const meta = await DB.get('meta', 'auth');
+                const recoverySalt = Crypto.base642ab(meta.recoverySalt);
+                const recoveryDerived = await Crypto.deriveKey(recKey, recoverySalt);
+                
+                VaultApp.sessionKey = await Crypto.unwrapKey(meta.wrappedRecovery, recoveryDerived);
+                document.getElementById('recover-key-input').value = '';
+                await VaultApp.loadVault();
+                await DB.addAudit("Emergency Recovery Executed.");
+                
+                UI.showView('view-dashboard');
+                VaultApp.setupAutoLock();
+                UI.toast('Vault recovered! Go to settings to regenerate keys.', 'warning');
+            } catch(err) {
+                UI.toast('Invalid Recovery Key.', 'danger');
+            }
+        },
+
+        async regenerateRecoveryKey() {
+            if(!VaultApp.sessionKey) return;
+            if(!confirm("This will invalidate your old recovery key. Proceed?")) return;
+            
+            try {
+                const meta = await DB.get('meta', 'auth');
+                const recoverySalt = Crypto.generateSalt();
+                const recoveryStr = Crypto.generateRecoveryStr();
+                const recoveryDerived = await Crypto.deriveKey(recoveryStr, recoverySalt);
+                
+                const wrappedRecovery = await Crypto.wrapKey(VaultApp.sessionKey, recoveryDerived);
+                
+                meta.recoverySalt = Crypto.ab2base64(recoverySalt);
+                meta.wrappedRecovery = wrappedRecovery;
+                await DB.put('meta', { id: 'auth', data: meta });
+                await DB.addAudit("Recovery Key Regenerated.");
+                
+                alert("NEW RECOVERY KEY:\n\n" + recoveryStr + "\n\nPlease write this down immediately. It will not be shown again.");
+            } catch(err) { UI.toast("Error regenerating key.", "danger"); }
+        },
+
+        lockVault(reason = 'Vault locked.') {
+            VaultApp.sessionKey = null;
+            VaultApp.vaultData = [];
+            VaultApp.currentViewingId = null;
+            document.getElementById('vault-list').innerHTML = '';
+            document.getElementById('search-input').value = '';
+            document.getElementById('audit-log-container').innerHTML = '';
+            clearTimeout(VaultApp.autoLockTimer);
+            UI.showView('view-unlock');
+            UI.toast(reason, 'info');
+        }
+    };
+
+    // --- 5. VAULT LOGIC & BACKUPS ---
+    const VaultApp = {
+        sessionKey: null,
+        vaultData: [],
+        currentViewingId: null,
+        autoLockTimer: null,
+
+        async loadVault() {
+            const encData = await DB.get('vault', 'main');
+            if (!encData) { this.vaultData = []; return; }
+            try {
+                const jsonStr = await Crypto.decryptData(encData.cipher, encData.iv, this.sessionKey);
+                this.vaultData = jsonStr ? JSON.parse(jsonStr) : [];
+                UI.renderVaultList();
+            } catch(e) { UI.toast("Corrupted vault data.", "danger"); }
+        },
+
+        async persistVault() {
+            const { cipher, iv } = await Crypto.encryptData(JSON.stringify(this.vaultData), this.sessionKey);
+            await DB.put('vault', { id: 'main', data: { cipher, iv } });
+        },
+
+        async saveEntry() {
+            if(!this.sessionKey) return AuthApp.lockVault();
+
+            const title = document.getElementById('entry-title').value.trim();
+            const pass = document.getElementById('entry-pass').value;
+            if(!title || !pass) return UI.toast("Title and Password required.", "warning");
+
+            const editId = document.getElementById('entry-edit-id').value;
+            const tagsInput = document.getElementById('entry-tags').value;
+            const tags = tagsInput ? tagsInput.split(',').map(t=>t.trim()).filter(t=>t) : [];
+
+            const entry = {
+                id: editId || crypto.randomUUID(),
+                title: title,
+                user: document.getElementById('entry-user').value.trim(),
+                pass: pass,
+                tags: tags,
+                notes: document.getElementById('entry-notes').value,
+                timestamp: Date.now()
+            };
+
+            if (editId) {
+                const idx = this.vaultData.findIndex(e => e.id === editId);
+                if(idx > -1) {
+                    if(this.vaultData[idx].pass !== pass) await DB.addAudit(`Password changed for: ${title}`);
+                    this.vaultData[idx] = entry;
+                }
+            } else {
+                this.vaultData.push(entry);
+                await DB.addAudit(`Added new entry: ${title}`);
+            }
+
+            await this.persistVault();
+            UI.showView('view-dashboard');
+            UI.renderVaultList();
+            UI.toast('Entry saved securely.', 'success');
+        },
+
+        async deleteEntry() {
+            if(!this.sessionKey || !this.currentViewingId) return;
+            if(confirm("Permanently delete this encrypted entry?")) {
+                const entry = this.vaultData.find(e => e.id === this.currentViewingId);
+                this.vaultData = this.vaultData.filter(e => e.id !== this.currentViewingId);
+                await this.persistVault();
+                await DB.addAudit(`Deleted entry: ${entry.title}`);
+                UI.showView('view-dashboard');
+                UI.renderVaultList();
+                UI.toast('Entry deleted.', 'info');
+            }
+        },
+
+        setupAutoLock() {
+            const reset = () => {
+                if(this.sessionKey) {
+                    clearTimeout(this.autoLockTimer);
+                    this.autoLockTimer = setTimeout(() => AuthApp.lockVault('Auto-locked due to inactivity.'), 5 * 60 * 1000);
+                }
+            };
+            ['mousemove', 'keydown', 'touchstart', 'click'].forEach(e => document.addEventListener(e, reset, {passive: true}));
+            
+            // Secure Session Management
+            document.addEventListener('visibilitychange', () => {
+                if(document.visibilityState === 'hidden' && this.sessionKey) {
+                    AuthApp.lockVault('Locked due to app visibility change.');
+                }
+            });
+        }
+    };
+
+    // --- 6. BACKUP & RESTORE ---
+    const BackupApp = {
+        async exportBackup() {
+            if(!VaultApp.sessionKey) return;
+            const meta = await DB.get('meta', 'auth');
+            const vault = await DB.get('vault', 'main');
+            
+            if(!meta || !vault) return UI.toast('Nothing to backup.');
+            
+            const payload = JSON.stringify({ meta, vault, timestamp: Date.now(), version: "3.0" });
+            const signature = await Crypto.signHMAC(payload, VaultApp.sessionKey);
+            
+            const backup = { payload: payload, signature: signature };
+            const blob = new Blob([JSON.stringify(backup)], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `NOT_ACCESS_BACKUP_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            await DB.addAudit("Vault Backup Exported.");
+            UI.toast('Encrypted & Signed Backup Exported.', 'success');
+        },
+
+        importBackup(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if(data.payload && data.signature) {
+                        // If logged in, verify HMAC
+                        if(VaultApp.sessionKey) {
+                            const isValid = await Crypto.verifyHMAC(data.payload, data.signature, VaultApp.sessionKey);
+                            if(!isValid) return UI.toast("Backup integrity check failed! File tampered.", "danger");
+                        } else {
+                            UI.toast("Importing while locked. Integrity will be checked on unlock.", "warning");
+                        }
+
+                        const payload = JSON.parse(data.payload);
+                        await DB.put('meta', { id: 'auth', data: payload.meta });
+                        await DB.put('vault', { id: 'main', data: payload.vault });
+                        
+                        UI.toast('Backup Restored. Please unlock vault.', 'success');
+                        setTimeout(() => window.location.reload(), 2000);
+                    }
+                } catch(err) { UI.toast('Invalid backup format.', 'danger'); }
+            };
+            reader.readAsText(file);
+        }
+    };
+
+    // --- 7. UI CONTROLLER & RENDERER ---
+    const UI = {
+        timers: {},
+
+        toggleMenu() {
+            document.getElementById('sidebar').classList.toggle('active');
+        },
+        
+        showView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(viewId);
+            if(target) target.classList.add('active');
+            
+            if(viewId === 'view-dashboard') document.getElementById('search-input').focus();
+        },
+
+        toast(msg, type = 'info') {
+            const el = document.createElement('div');
+            el.className = `toast`;
+            el.style.borderLeft = `4px solid var(--${type})`;
+            el.textContent = msg; 
+            
+            const container = document.getElementById('toast-container');
+            container.appendChild(el);
+            
+            // Force reflow for animation
+            void el.offsetWidth;
+            el.classList.add('show');
+            
+            setTimeout(() => {
+                el.classList.remove('show');
+                setTimeout(() => el.remove(), 300);
+            }, 3000);
+        },
+
+        copySensitive(elementId, isPassword) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                this.toast(isPassword ? 'Password copied. Clears in 30s.' : 'Copied.', 'success');
+                if(isPassword) setTimeout(() => navigator.clipboard.writeText(''), 30000);
+            });
+        },
+        copyText(elementId) {
+            navigator.clipboard.writeText(document.getElementById(elementId).textContent);
+            this.toast('Copied to clipboard.', 'success');
+        },
+
+        // Vault Rendering
+        renderVaultList(filterStr = '') {
+            const list = document.getElementById('vault-list');
+            list.innerHTML = '';
+            
+            document.getElementById('stat-count').textContent = VaultApp.vaultData.length;
+
+            const filtered = VaultApp.vaultData.filter(e => 
+                e.title.toLowerCase().includes(filterStr.toLowerCase()) || 
+                (e.tags && e.tags.some(t => t.toLowerCase().includes(filterStr.toLowerCase())))
+            );
+
+            if(filtered.length === 0) {
+                list.innerHTML = '<p class="text-center text-muted" style="margin-top:20px;">Vault is empty or no matches found.</p>';
+                return;
+            }
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'pass-card';
+                card.onclick = () => this.viewSingleEntry(item.id);
+
+                const header = document.createElement('div');
+                header.className = 'pass-card-header';
+                
+                const title = document.createElement('div');
+                title.className = 'identifier';
+                title.textContent = item.title;
+
+                const tagContainer = document.createElement('div');
+                tagContainer.className = 'tags-container';
+                if(item.tags) {
+                    item.tags.slice(0,3).forEach(t => {
+                        const span = document.createElement('span');
+                        span.className = 'tag'; span.textContent = t;
+                        tagContainer.appendChild(span);
+                    });
+                }
+
+                header.appendChild(title);
+                header.appendChild(tagContainer);
+
+                const body = document.createElement('div');
+                body.className = 'text-muted';
+                body.style.fontSize = '0.85rem';
+                body.textContent = item.user || 'No username';
+
+                card.appendChild(header);
+                card.appendChild(body);
+                list.appendChild(card);
+            });
+        },
+
+        filterVault() { this.renderVaultList(document.getElementById('search-input').value); },
+
+        viewSingleEntry(id) {
+            const entry = VaultApp.vaultData.find(e => e.id === id);
+            if(!entry) return;
+            VaultApp.currentViewingId = id;
+
+            document.getElementById('view-title').textContent = entry.title;
+            document.getElementById('view-user').textContent = entry.user || '--';
+            document.getElementById('view-pass-raw').textContent = entry.pass;
+            document.getElementById('view-pass-masked').classList.remove('hidden');
+            document.getElementById('view-pass-raw').classList.add('hidden');
+            document.getElementById('view-pass-warning').classList.add('hidden');
+            
+            const tagsCont = document.getElementById('view-tags');
+            tagsCont.innerHTML = '';
+            if(entry.tags) entry.tags.forEach(t => {
+                const sp = document.createElement('span'); sp.className='tag'; sp.textContent=t;
+                tagsCont.appendChild(sp);
+            });
+
+            if(entry.notes) {
+                document.getElementById('view-notes-container').classList.remove('hidden');
+                document.getElementById('view-notes').textContent = entry.notes;
+            } else {
+                document.getElementById('view-notes-container').classList.add('hidden');
+            }
+            
+            const d = new Date(entry.timestamp);
+            document.getElementById('view-modified').textContent = isNaN(d) ? 'Unknown' : d.toLocaleString();
+
+            this.showView('view-single-entry');
+        },
+
+        revealPasswordTemporarily() {
+            const raw = document.getElementById('view-pass-raw');
+            const masked = document.getElementById('view-pass-masked');
+            const warning = document.getElementById('view-pass-warning');
+            const timerSpan = document.getElementById('view-pass-timer');
+            
+            raw.classList.remove('hidden');
+            masked.classList.add('hidden');
+            warning.classList.remove('hidden');
+            
+            let time = 15;
+            timerSpan.textContent = time;
+            
+            if(this.timers.reveal) clearInterval(this.timers.reveal);
+            this.timers.reveal = setInterval(() => {
+                time--;
+                timerSpan.textContent = time;
+                if(time <= 0) {
+                    clearInterval(this.timers.reveal);
+                    raw.classList.add('hidden');
+                    masked.classList.remove('hidden');
+                    warning.classList.add('hidden');
+                }
+            }, 1000);
+        },
+
+        prepareEntryForm() {
+            document.getElementById('entry-form-title').textContent = 'Add Secure Entry';
+            ['entry-edit-id','entry-title','entry-user','entry-pass','entry-tags','entry-notes'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('btn-delete-entry').classList.add('hidden');
+            document.getElementById('entry-pass-entropy').textContent = '';
+            this.showView('view-entry-form');
+        },
+
+        editCurrentEntry() {
+            const entry = VaultApp.vaultData.find(e => e.id === VaultApp.currentViewingId);
+            if(!entry) return;
+            
+            document.getElementById('entry-form-title').textContent = 'Edit Secure Entry';
+            document.getElementById('entry-edit-id').value = entry.id;
+            document.getElementById('entry-title').value = entry.title;
+            document.getElementById('entry-user').value = entry.user;
+            document.getElementById('entry-pass').value = entry.pass;
+            document.getElementById('entry-tags').value = entry.tags ? entry.tags.join(', ') : '';
+            document.getElementById('entry-notes').value = entry.notes || '';
+            
+            document.getElementById('btn-delete-entry').classList.remove('hidden');
+            this.calcFieldEntropy(entry.pass, 'entry-pass-entropy');
+            this.showView('view-entry-form');
+        },
+
+        toggleVisibility(inputId) {
+            const el = document.getElementById(inputId);
+            el.type = el.type === 'password' ? 'text' : 'password';
+        },
+
+        // Password Generator
+        updateGenerator() {
+            const len = parseInt(document.getElementById('gen-len').value);
+            document.getElementById('gen-len-val').textContent = len;
+            
+            const up = document.getElementById('gen-up').checked;
+            const low = document.getElementById('gen-low').checked;
+            const num = document.getElementById('gen-num').checked;
+            const sym = document.getElementById('gen-sym').checked;
+
+            let pool = '';
+            if(up) pool += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            if(low) pool += 'abcdefghijklmnopqrstuvwxyz';
+            if(num) pool += '0123456789';
+            if(sym) pool += '!@#$%^&*()_+~`|}{[]:;?><,./-=';
+            if(pool === '') { pool = 'abcdefghijklmnopqrstuvwxyz'; document.getElementById('gen-low').checked = true; }
+
+            let pass = '';
+            const randomVals = crypto.getRandomValues(new Uint32Array(len));
+            for(let i=0; i<len; i++) pass += pool[randomVals[i] % pool.length];
+            
+            document.getElementById('gen-preview').textContent = pass;
+            
+            // Calculate Entropy E = L * log2(R)
+            const entropy = Math.round(len * Math.log2(pool.length));
+            document.getElementById('gen-entropy').textContent = `Entropy: ${entropy} bits`;
+            
+            let crack = 'Instant';
+            if(entropy > 120) crack = 'Centuries';
+            else if(entropy > 80) crack = 'Years';
+            else if(entropy > 60) crack = 'Months';
+            else if(entropy > 50) crack = 'Days';
+            
+            const crackEl = document.getElementById('gen-crack');
+            crackEl.textContent = `Crack: ${crack}`;
+            crackEl.style.color = entropy > 80 ? 'var(--success)' : (entropy > 50 ? 'var(--warning)' : 'var(--danger)');
+        },
+
+        applyGeneratedPassword() {
+            const pass = document.getElementById('gen-preview').textContent;
+            if(pass) {
+                document.getElementById('entry-pass').value = pass;
+                this.calcFieldEntropy(pass, 'entry-pass-entropy');
+                this.showView('view-entry-form');
+            }
+        },
+
+        calcFieldEntropy(pass, labelId) {
+            let pool = 0;
+            if(/[A-Z]/.test(pass)) pool += 26;
+            if(/[a-z]/.test(pass)) pool += 26;
+            if(/[0-9]/.test(pass)) pool += 10;
+            if(/[^A-Za-z0-9]/.test(pass)) pool += 32;
+            const entropy = pass.length > 0 ? Math.round(pass.length * Math.log2(pool || 1)) : 0;
+            document.getElementById(labelId).textContent = `~${entropy} bits`;
+        },
+
+        calcStrengthMeter(pass, barId) {
+            let score = 0;
+            if(pass.length > 8) score++; if(pass.length > 12) score++;
+            if(/[A-Z]/.test(pass)) score++; if(/[a-z]/.test(pass)) score++;
+            if(/[0-9]/.test(pass)) score++; if(/[^A-Za-z0-9]/.test(pass)) score++;
+            
+            const bar = document.getElementById(barId);
+            bar.style.width = Math.min((score / 6) * 100, 100) + '%';
+            if(score < 3) bar.style.background = 'var(--danger)';
+            else if(score < 5) bar.style.background = 'var(--warning)';
+            else bar.style.background = 'var(--success)';
+            
+            this.calcFieldEntropy(pass, 'setup-entropy-label');
+        },
+
+        // Security Dashboard
+        async showSecurityDashboard() {
+            let dupes = 0; let weak = 0;
+            const passCounts = {};
+            
+            VaultApp.vaultData.forEach(item => {
+                if(!passCounts[item.pass]) passCounts[item.pass] = 0;
+                passCounts[item.pass]++;
+                
+                // weak check (< 50 entropy approx)
+                let pool = 0;
+                if(/[A-Z]/.test(item.pass)) pool += 26;
+                if(/[a-z]/.test(item.pass)) pool += 26;
+                if(/[0-9]/.test(item.pass)) pool += 10;
+                if(/[^A-Za-z0-9]/.test(item.pass)) pool += 32;
+                if((item.pass.length * Math.log2(pool || 1)) < 50) weak++;
+            });
+            
+            Object.values(passCounts).forEach(count => { if(count > 1) dupes += (count-1); });
+            
+            document.getElementById('sec-weak').textContent = weak;
+            document.getElementById('sec-dupes').textContent = dupes;
+            
+            let health = 100;
+            health -= (weak * 5);
+            health -= (dupes * 5);
+            health = Math.max(0, health);
+            
+            const hScore = document.getElementById('sec-health-score');
+            hScore.textContent = `${health}%`;
+            hScore.style.color = health > 80 ? 'var(--success)' : (health > 50 ? 'var(--warning)' : 'var(--danger)');
+
+            // Load Audit Logs
+            const logs = await DB.getAllAudit();
+            const logCont = document.getElementById('audit-log-container');
+            logCont.innerHTML = '';
+            
+            if(logs && logs.length > 0) {
+                // Decrypt and show last 50
+                const recentLogs = logs.slice(-50).reverse();
+                for(let l of recentLogs) {
+                    try {
+                        const dec = await Crypto.decryptData(l.data.cipher, l.data.iv, VaultApp.sessionKey);
+                        if(dec) {
+                            const parts = dec.split(" | ");
+                            const el = document.createElement('div'); el.className = 'audit-item';
+                            el.innerHTML = `<span class="audit-time">${new Date(parts[1]).toLocaleString()}</span>${parts[0]}`;
+                            logCont.appendChild(el);
+                        }
+                    } catch(e){}
+                }
+            } else {
+                logCont.innerHTML = '<p class="text-muted text-center" style="margin-top:20px;">No logs recorded.</p>';
+            }
+
+            this.showView('view-security-dash');
+        },
+
+        showSettings() {
+            this.showView('view-settings');
+        },
+
+        triggerTrap() {
+            document.querySelector('#hacker-trap input').style.display = 'none';
+            document.querySelector('#hacker-trap button').style.display = 'none';
+            document.getElementById('hacker-screen').classList.remove('hidden');
+            AuthApp.recordFailedAttempt(); // Log as abuse
+        }
+    };
+
+    // --- 8. INIT & ROUTING ---
+    document.getElementById('setup-pass').addEventListener('input', (e) => UI.calcStrengthMeter(e.target.value, 'setup-strength'));
+    
+    async function initApp() {
+        await DB.init();
+        
+        const hash = window.location.hash || '#home';
+        document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+        const targetPage = document.querySelector(hash);
+        if(targetPage) targetPage.classList.add('active');
+        
+        if(hash === '#home' || hash === '') {
+            const meta = await DB.get('meta', 'auth');
+            if(!VaultApp.sessionKey) {
+                if(!meta) UI.showView('view-setup');
+                else {
+                    AuthApp.checkLockout();
+                    UI.showView('view-unlock');
+                }
+            } else {
+                UI.showView('view-dashboard');
+            }
+        }
+    }
+
+    window.addEventListener('hashchange', initApp);
+    window.addEventListener('DOMContentLoaded', initApp);
+
+</script>
+</body>
+</html>
