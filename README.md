@@ -39,7 +39,7 @@ This application is designed, tested, and optimized primarily for **Brave Browse
 
 ## 🌐 LIVE ON INTERNET 
 
-https://not-access.netlify.app
+https://notaccess.vercel.app
 
 
 # NOT ACCESS - Advanced Secure Vault (v3.0)
